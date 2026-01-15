@@ -1,0 +1,37 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Session Feedback - Send Buddy{% endblock %}
+
+{% block content %}
+<h2>How Was Your Climbing Session?</h2>
+
+<p>Hi {{ user.display_name }},</p>
+
+<p>We hope you had a great climbing session with <strong>{{ partner.display_name }}</strong>!</p>
+
+<div class="info-box">
+    <p><strong>Session Details:</strong></p>
+    <p><strong>Date:</strong> {{ session.proposed_date|date:"l, F j, Y" }}</p>
+    {% if session.crag %}
+    <p><strong>Location:</strong> {{ session.crag }}</p>
+    {% endif %}
+</div>
+
+<p>Your feedback helps build trust in the Send Buddy community and helps other climbers make informed decisions.</p>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ feedback_url }}" class="button">Provide Feedback</a>
+</div>
+
+<div class="info-box">
+    <p><strong>Your feedback includes:</strong></p>
+    <ul style="margin: 10px 0; padding-left: 20px;">
+        <li><strong>Safety rating:</strong> How safe did you feel?</li>
+        <li><strong>Communication rating:</strong> How well did you communicate?</li>
+        <li><strong>Overall rating:</strong> Would you climb with them again?</li>
+    </ul>
+    <p class="small-text">Your feedback is private and will be aggregated with others to build your partner's reputation.</p>
+</div>
+
+<p class="small-text">This only takes a minute and makes a big difference!</p>
+{% endblock %}

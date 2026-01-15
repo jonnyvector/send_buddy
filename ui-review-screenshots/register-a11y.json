@@ -1,0 +1,47 @@
+{
+  "headings": [
+    {
+      "tag": "H1",
+      "text": "Create Account"
+    }
+  ],
+  "images": [],
+  "buttons": [
+    {
+      "count": 4
+    }
+  ],
+  "links": [
+    {
+      "count": 5
+    }
+  ],
+  "inputs": [
+    {
+      "type": "email",
+      "hasLabel": true,
+      "placeholder": ""
+    },
+    {
+      "type": "text",
+      "hasLabel": true,
+      "placeholder": ""
+    },
+    {
+      "type": "text",
+      "hasLabel": true,
+      "placeholder": "e.g., Boulder, CO"
+    },
+    {
+      "type": "password",
+      "hasLabel": true,
+      "placeholder": ""
+    },
+    {
+      "type": "password",
+      "hasLabel": true,
+      "placeholder": ""
+    }
+  ],
+  "contrast": []
+}

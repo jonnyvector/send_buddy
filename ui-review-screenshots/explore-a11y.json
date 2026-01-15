@@ -1,0 +1,64 @@
+{
+  "headings": [
+    {
+      "tag": "H2",
+      "text": "Filters"
+    },
+    {
+      "tag": "H3",
+      "text": "Date Range"
+    },
+    {
+      "tag": "H3",
+      "text": "Disciplines"
+    },
+    {
+      "tag": "H2",
+      "text": "Failed to Load Map"
+    }
+  ],
+  "images": [],
+  "buttons": [
+    {
+      "count": 6
+    }
+  ],
+  "links": [
+    {
+      "count": 5
+    }
+  ],
+  "inputs": [
+    {
+      "type": "date",
+      "hasLabel": true,
+      "placeholder": ""
+    },
+    {
+      "type": "date",
+      "hasLabel": true,
+      "placeholder": ""
+    },
+    {
+      "type": "checkbox",
+      "hasLabel": true,
+      "placeholder": ""
+    },
+    {
+      "type": "checkbox",
+      "hasLabel": true,
+      "placeholder": ""
+    },
+    {
+      "type": "checkbox",
+      "hasLabel": true,
+      "placeholder": ""
+    },
+    {
+      "type": "checkbox",
+      "hasLabel": true,
+      "placeholder": ""
+    }
+  ],
+  "pageTitle": "Send Buddy - Find Your Climbing Partner"
+}

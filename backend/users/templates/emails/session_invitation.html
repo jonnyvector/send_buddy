@@ -1,0 +1,45 @@
+{% extends "emails/base.html" %}
+
+{% block title %}New Climbing Session Invitation - Send Buddy{% endblock %}
+
+{% block content %}
+<h2>You've Got a Climbing Partner Request!</h2>
+
+<p>Hi {{ invitee.display_name }},</p>
+
+<p><strong>{{ inviter.display_name }}</strong> wants to climb with you!</p>
+
+<div class="info-box">
+    <p><strong>Session Details:</strong></p>
+    <p><strong>Date:</strong> {{ session.proposed_date|date:"l, F j, Y" }}</p>
+    <p><strong>Time:</strong> {{ session.get_time_block_display }}</p>
+    {% if session.crag %}
+    <p><strong>Location:</strong> {{ session.crag }}</p>
+    {% endif %}
+    {% if session.goal %}
+    <p><strong>Goal:</strong> {{ session.goal }}</p>
+    {% endif %}
+    <p><strong>Trip:</strong> {{ session.trip.destination.name }} ({{ session.trip.start_date }} - {{ session.trip.end_date }})</p>
+</div>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ accept_url }}" class="button" style="background: #28a745; margin-right: 10px;">Accept Invitation</a>
+    <a href="{{ decline_url }}" class="button" style="background: #dc3545;">Decline</a>
+</div>
+
+<p class="small-text">You can also view this invitation and send a message by logging into Send Buddy:</p>
+<p class="small-text"><a href="{{ session_url }}">{{ session_url }}</a></p>
+
+<div class="divider"></div>
+
+<div class="info-box">
+    <p><strong>About {{ inviter.display_name }}:</strong></p>
+    {% if inviter.bio %}
+    <p>{{ inviter.bio }}</p>
+    {% endif %}
+    <p><strong>Location:</strong> {{ inviter.home_location }}</p>
+    <p class="small-text">View their full profile in the app</p>
+</div>
+
+<p class="small-text">Not interested? You can decline this invitation or block this user from your account settings.</p>
+{% endblock %}

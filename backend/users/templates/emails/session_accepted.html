@@ -1,0 +1,39 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Session Accepted - Send Buddy{% endblock %}
+
+{% block content %}
+<h2>Great News! Your Invitation Was Accepted</h2>
+
+<p>Hi {{ inviter.display_name }},</p>
+
+<p><strong>{{ invitee.display_name }}</strong> has accepted your climbing invitation!</p>
+
+<div class="info-box">
+    <p><strong>Session Details:</strong></p>
+    <p><strong>Date:</strong> {{ session.proposed_date|date:"l, F j, Y" }}</p>
+    <p><strong>Time:</strong> {{ session.get_time_block_display }}</p>
+    {% if session.crag %}
+    <p><strong>Location:</strong> {{ session.crag }}</p>
+    {% endif %}
+    {% if session.goal %}
+    <p><strong>Goal:</strong> {{ session.goal }}</p>
+    {% endif %}
+</div>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ session_url }}" class="button">View Session & Chat</a>
+</div>
+
+<div class="info-box">
+    <p><strong>Next Steps:</strong></p>
+    <ul style="margin: 10px 0; padding-left: 20px;">
+        <li>Use the chat to coordinate meeting details</li>
+        <li>Confirm equipment needs and expectations</li>
+        <li>Exchange contact information if needed</li>
+        <li>Have a great session!</li>
+    </ul>
+</div>
+
+<p class="small-text">Remember to provide feedback after your session to help build trust in the Send Buddy community.</p>
+{% endblock %}

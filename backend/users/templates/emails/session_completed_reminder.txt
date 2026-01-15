@@ -1,0 +1,28 @@
+How Was Your Climbing Session?
+
+Hi {{ user.display_name }},
+
+We hope you had a great climbing session with {{ partner.display_name }}!
+
+SESSION DETAILS:
+- Date: {{ session.proposed_date|date:"l, F j, Y" }}
+{% if session.crag %}- Location: {{ session.crag }}{% endif %}
+
+Your feedback helps build trust in the Send Buddy community and helps other climbers make informed decisions.
+
+Provide Feedback: {{ feedback_url }}
+
+YOUR FEEDBACK INCLUDES:
+- Safety rating: How safe did you feel?
+- Communication rating: How well did you communicate?
+- Overall rating: Would you climb with them again?
+
+Your feedback is private and will be aggregated with others to build your partner's reputation.
+
+This only takes a minute and makes a big difference!
+
+---
+
+Happy climbing!
+The Send Buddy Team
+Questions? Contact us at support@sendbuddy.com

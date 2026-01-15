@@ -1,0 +1,37 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Report Received - Send Buddy{% endblock %}
+
+{% block content %}
+<h2>Your Report Has Been Received</h2>
+
+<p>Hi {{ reporter.display_name }},</p>
+
+<p>Thank you for taking the time to report a concern. The safety and well-being of our community is our top priority.</p>
+
+<div class="info-box">
+    <p><strong>Report Details:</strong></p>
+    <p><strong>Report ID:</strong> {{ report.id }}</p>
+    <p><strong>Type:</strong> {{ report.get_reason_display }}</p>
+    <p><strong>Submitted:</strong> {{ report.created_at|date:"F j, Y \a\t g:i A" }}</p>
+    <p><strong>Status:</strong> {{ report.get_status_display }}</p>
+</div>
+
+<div class="info-box">
+    <p><strong>What Happens Next?</strong></p>
+    <ul style="margin: 10px 0; padding-left: 20px;">
+        <li>Our moderation team will review your report within 24-48 hours</li>
+        <li>We'll investigate the issue and take appropriate action</li>
+        <li>You'll receive an email update when your report has been reviewed</li>
+        <li>All reports are kept confidential</li>
+    </ul>
+</div>
+
+<p>If this is an urgent safety matter, please contact local authorities immediately.</p>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ report_url }}" class="button">View Report Status</a>
+</div>
+
+<p class="small-text">Report ID for reference: {{ report.id }}</p>
+{% endblock %}

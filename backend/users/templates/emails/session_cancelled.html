@@ -1,0 +1,35 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Session Cancelled - Send Buddy{% endblock %}
+
+{% block content %}
+<h2>Session Cancelled</h2>
+
+<p>Hi {{ recipient.display_name }},</p>
+
+<p><strong>{{ canceller.display_name }}</strong> has cancelled your upcoming climbing session.</p>
+
+<div class="info-box">
+    <p><strong>Session Details:</strong></p>
+    <p><strong>Date:</strong> {{ session.proposed_date|date:"l, F j, Y" }}</p>
+    <p><strong>Time:</strong> {{ session.get_time_block_display }}</p>
+    {% if session.crag %}
+    <p><strong>Location:</strong> {{ session.crag }}</p>
+    {% endif %}
+</div>
+
+{% if reason %}
+<div class="info-box">
+    <p><strong>Reason:</strong></p>
+    <p>{{ reason }}</p>
+</div>
+{% endif %}
+
+<p>We understand that plans change. If you'd like to reschedule or find other climbing partners, check out available sessions in your area.</p>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ browse_url }}" class="button">Find Other Partners</a>
+</div>
+
+<p class="small-text">If you have any concerns about this cancellation, please contact our support team.</p>
+{% endblock %}

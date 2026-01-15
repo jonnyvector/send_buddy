@@ -1,0 +1,32 @@
+{
+  "headings": [
+    {
+      "tag": "H1",
+      "text": "Login to Send Buddy"
+    }
+  ],
+  "images": [],
+  "buttons": [
+    {
+      "count": 3
+    }
+  ],
+  "links": [
+    {
+      "count": 6
+    }
+  ],
+  "inputs": [
+    {
+      "type": "email",
+      "hasLabel": true,
+      "placeholder": ""
+    },
+    {
+      "type": "password",
+      "hasLabel": true,
+      "placeholder": ""
+    }
+  ],
+  "pageTitle": "Send Buddy - Find Your Climbing Partner"
+}

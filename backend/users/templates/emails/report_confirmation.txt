@@ -1,0 +1,28 @@
+Your Report Has Been Received
+
+Hi {{ reporter.display_name }},
+
+Thank you for taking the time to report a concern. The safety and well-being of our community is our top priority.
+
+REPORT DETAILS:
+- Report ID: {{ report.id }}
+- Type: {{ report.get_reason_display }}
+- Submitted: {{ report.created_at|date:"F j, Y \a\t g:i A" }}
+- Status: {{ report.get_status_display }}
+
+WHAT HAPPENS NEXT?
+- Our moderation team will review your report within 24-48 hours
+- We'll investigate the issue and take appropriate action
+- You'll receive an email update when your report has been reviewed
+- All reports are kept confidential
+
+If this is an urgent safety matter, please contact local authorities immediately.
+
+View Report Status: {{ report_url }}
+
+Report ID for reference: {{ report.id }}
+
+---
+
+The Send Buddy Team
+Questions? Contact us at support@sendbuddy.com

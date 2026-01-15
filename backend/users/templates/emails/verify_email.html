@@ -1,0 +1,34 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Verify Your Email - Send Buddy{% endblock %}
+
+{% block content %}
+<h2>Welcome to Send Buddy, {{ user.display_name }}!</h2>
+
+<p>Thanks for signing up! We're excited to help you find your perfect climbing partner.</p>
+
+<p>To get started, please verify your email address by clicking the button below:</p>
+
+<div style="text-align: center;">
+    <a href="{{ verification_url }}" class="button">Verify Email Address</a>
+</div>
+
+<p class="small-text">Or copy and paste this link into your browser:</p>
+<p class="small-text" style="word-break: break-all;">{{ verification_url }}</p>
+
+<div class="divider"></div>
+
+<p class="small-text">This verification link will expire in 24 hours.</p>
+
+<p class="small-text">If you didn't create a Send Buddy account, you can safely ignore this email.</p>
+
+<div class="info-box">
+    <p><strong>What's Next?</strong></p>
+    <p>After verifying your email, you can:</p>
+    <ul style="margin: 10px 0; padding-left: 20px;">
+        <li>Complete your climbing profile</li>
+        <li>Plan your next climbing trip</li>
+        <li>Find and connect with local climbers</li>
+    </ul>
+</div>
+{% endblock %}

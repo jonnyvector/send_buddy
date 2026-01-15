@@ -1,0 +1,65 @@
+{
+  "headings": [
+    {
+      "tag": "H1",
+      "text": "Find Your Perfect Climbing Partner"
+    },
+    {
+      "tag": "H2",
+      "text": "Why Climbers Choose Send Buddy"
+    },
+    {
+      "tag": "H3",
+      "text": "Smart Matching"
+    },
+    {
+      "tag": "H3",
+      "text": "Safety First"
+    },
+    {
+      "tag": "H3",
+      "text": "Travel Friendly"
+    },
+    {
+      "tag": "H3",
+      "text": "Session Planning"
+    },
+    {
+      "tag": "H2",
+      "text": "How It Works"
+    },
+    {
+      "tag": "H3",
+      "text": "Create Your Profile"
+    },
+    {
+      "tag": "H3",
+      "text": "Share Travel Plans"
+    },
+    {
+      "tag": "H3",
+      "text": "Get Matched"
+    },
+    {
+      "tag": "H3",
+      "text": "Climb Together"
+    },
+    {
+      "tag": "H2",
+      "text": "Ready to Find Your Climbing Partner?"
+    }
+  ],
+  "images": [],
+  "buttons": [
+    {
+      "count": 6
+    }
+  ],
+  "links": [
+    {
+      "count": 9
+    }
+  ],
+  "inputs": [],
+  "contrast": []
+}

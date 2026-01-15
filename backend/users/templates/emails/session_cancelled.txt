@@ -1,0 +1,27 @@
+Session Cancelled
+
+Hi {{ recipient.display_name }},
+
+{{ canceller.display_name }} has cancelled your upcoming climbing session.
+
+SESSION DETAILS:
+- Date: {{ session.proposed_date|date:"l, F j, Y" }}
+- Time: {{ session.get_time_block_display }}
+{% if session.crag %}- Location: {{ session.crag }}{% endif %}
+
+{% if reason %}
+REASON:
+{{ reason }}
+{% endif %}
+
+We understand that plans change. If you'd like to reschedule or find other climbing partners, check out available sessions in your area.
+
+Find Other Partners: {{ browse_url }}
+
+If you have any concerns about this cancellation, please contact our support team.
+
+---
+
+Happy climbing!
+The Send Buddy Team
+Questions? Contact us at support@sendbuddy.com

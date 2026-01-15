@@ -1,0 +1,24 @@
+Welcome to Send Buddy, {{ user.display_name }}!
+
+Thanks for signing up! We're excited to help you find your perfect climbing partner.
+
+To get started, please verify your email address by clicking the link below:
+
+{{ verification_url }}
+
+This verification link will expire in 24 hours.
+
+If you didn't create a Send Buddy account, you can safely ignore this email.
+
+---
+
+What's Next?
+After verifying your email, you can:
+- Complete your climbing profile
+- Plan your next climbing trip
+- Find and connect with local climbers
+
+Happy climbing!
+The Send Buddy Team
+
+Questions? Contact us at support@sendbuddy.com

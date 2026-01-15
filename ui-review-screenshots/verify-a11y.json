@@ -1,0 +1,21 @@
+{
+  "headings": [
+    {
+      "tag": "H1",
+      "text": "Verify Your Email"
+    }
+  ],
+  "images": [],
+  "buttons": [
+    {
+      "count": 3
+    }
+  ],
+  "links": [
+    {
+      "count": 6
+    }
+  ],
+  "inputs": [],
+  "contrast": []
+}

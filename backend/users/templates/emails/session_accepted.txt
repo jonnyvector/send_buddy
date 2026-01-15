@@ -1,0 +1,27 @@
+Great News! Your Invitation Was Accepted
+
+Hi {{ inviter.display_name }},
+
+{{ invitee.display_name }} has accepted your climbing invitation!
+
+SESSION DETAILS:
+- Date: {{ session.proposed_date|date:"l, F j, Y" }}
+- Time: {{ session.get_time_block_display }}
+{% if session.crag %}- Location: {{ session.crag }}{% endif %}
+{% if session.goal %}- Goal: {{ session.goal }}{% endif %}
+
+View Session & Chat: {{ session_url }}
+
+NEXT STEPS:
+- Use the chat to coordinate meeting details
+- Confirm equipment needs and expectations
+- Exchange contact information if needed
+- Have a great session!
+
+Remember to provide feedback after your session to help build trust in the Send Buddy community.
+
+---
+
+Happy climbing!
+The Send Buddy Team
+Questions? Contact us at support@sendbuddy.com

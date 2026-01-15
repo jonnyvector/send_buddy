@@ -1,0 +1,32 @@
+You've Got a Climbing Partner Request!
+
+Hi {{ invitee.display_name }},
+
+{{ inviter.display_name }} wants to climb with you!
+
+SESSION DETAILS:
+- Date: {{ session.proposed_date|date:"l, F j, Y" }}
+- Time: {{ session.get_time_block_display }}
+{% if session.crag %}- Location: {{ session.crag }}{% endif %}
+{% if session.goal %}- Goal: {{ session.goal }}{% endif %}
+- Trip: {{ session.trip.destination.name }} ({{ session.trip.start_date }} - {{ session.trip.end_date }})
+
+RESPOND TO THIS INVITATION:
+Accept: {{ accept_url }}
+Decline: {{ decline_url }}
+
+Or view in Send Buddy: {{ session_url }}
+
+---
+
+ABOUT {{ inviter.display_name }}:
+{% if inviter.bio %}{{ inviter.bio }}{% endif %}
+Location: {{ inviter.home_location }}
+
+Not interested? You can decline this invitation or block this user from your account settings.
+
+---
+
+Happy climbing!
+The Send Buddy Team
+Questions? Contact us at support@sendbuddy.com

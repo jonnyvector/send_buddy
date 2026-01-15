@@ -1,0 +1,41 @@
+Update on Your Report
+
+Hi {{ reporter.display_name }},
+
+We're writing to update you on the report you submitted.
+
+REPORT DETAILS:
+- Report ID: {{ report.id }}
+- Type: {{ report.get_reason_display }}
+- Status: {{ report.get_status_display }}
+- Last Updated: {{ report.updated_at|date:"F j, Y \a\t g:i A" }}
+
+{% if report.status == 'resolved' %}
+RESOLUTION:
+We've reviewed your report and taken appropriate action. Thank you for helping keep the Send Buddy community safe.
+{% if report.admin_notes %}
+Note: {{ report.admin_notes }}
+{% endif %}
+
+{% elif report.status == 'investigating' %}
+STATUS:
+Our team is currently investigating this matter. We'll keep you updated as we make progress.
+
+{% elif report.status == 'dismissed' %}
+RESOLUTION:
+After review, we've determined that no action is needed at this time.
+{% if report.admin_notes %}
+Note: {{ report.admin_notes }}
+{% endif %}
+{% endif %}
+
+We take all reports seriously and appreciate you taking the time to help maintain a safe climbing community.
+
+View Report Details: {{ report_url }}
+
+If you have additional information to add to this report, please reply to this email or contact our support team.
+
+---
+
+The Send Buddy Team
+Questions? Contact us at support@sendbuddy.com

@@ -1,0 +1,50 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Report Update - Send Buddy{% endblock %}
+
+{% block content %}
+<h2>Update on Your Report</h2>
+
+<p>Hi {{ reporter.display_name }},</p>
+
+<p>We're writing to update you on the report you submitted.</p>
+
+<div class="info-box">
+    <p><strong>Report Details:</strong></p>
+    <p><strong>Report ID:</strong> {{ report.id }}</p>
+    <p><strong>Type:</strong> {{ report.get_reason_display }}</p>
+    <p><strong>Status:</strong> <strong>{{ report.get_status_display }}</strong></p>
+    <p><strong>Last Updated:</strong> {{ report.updated_at|date:"F j, Y \a\t g:i A" }}</p>
+</div>
+
+{% if report.status == 'resolved' %}
+<div class="info-box" style="border-left-color: #28a745;">
+    <p><strong>Resolution:</strong></p>
+    <p>We've reviewed your report and taken appropriate action. Thank you for helping keep the Send Buddy community safe.</p>
+    {% if report.admin_notes %}
+    <p class="small-text">Note: {{ report.admin_notes }}</p>
+    {% endif %}
+</div>
+{% elif report.status == 'investigating' %}
+<div class="info-box" style="border-left-color: #ffc107;">
+    <p><strong>Status:</strong></p>
+    <p>Our team is currently investigating this matter. We'll keep you updated as we make progress.</p>
+</div>
+{% elif report.status == 'dismissed' %}
+<div class="info-box" style="border-left-color: #6c757d;">
+    <p><strong>Resolution:</strong></p>
+    <p>After review, we've determined that no action is needed at this time.</p>
+    {% if report.admin_notes %}
+    <p class="small-text">Note: {{ report.admin_notes }}</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<p>We take all reports seriously and appreciate you taking the time to help maintain a safe climbing community.</p>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ report_url }}" class="button">View Report Details</a>
+</div>
+
+<p class="small-text">If you have additional information to add to this report, please reply to this email or contact our support team.</p>
+{% endblock %}
