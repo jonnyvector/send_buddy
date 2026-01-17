@@ -63,22 +63,17 @@ class MatchingService:
         return scored_matches[:self.limit]
 
     def _get_candidates(self):
-        """Get all eligible candidate users (excluding blocked users)"""
+        """Get all eligible candidate users (enforcing bilateral blocking via visible_to)"""
 
-        # Phase 6: Get IDs of users blocked by me or who blocked me
-        blocked_by_me = self.user.blocks_given.values_list('blocked_id', flat=True)
-        blocked_me = self.user.blocks_received.values_list('blocker_id', flat=True)
-        excluded_ids = set(blocked_by_me) | set(blocked_me) | {self.user.id}
-
-        # Get all users with active trips overlapping my trip's dates
-        candidates = User.objects.filter(
+        # Use visible_to() to handle blocking and profile visibility consistently
+        # This enforces bilateral blocking and profile_visible=True
+        candidates = User.objects.visible_to(self.user).filter(
             trips__is_active=True,
             trips__start_date__lte=self.trip.end_date,
             trips__end_date__gte=self.trip.start_date,
-            email_verified=True,
-            profile_visible=True
+            email_verified=True
         ).exclude(
-            id__in=excluded_ids
+            id=self.user.id  # Exclude self
         ).prefetch_related(
             'disciplines', 'experience_tags__tag'
         ).distinct()

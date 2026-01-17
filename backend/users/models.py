@@ -158,6 +158,18 @@ class User(AbstractUser):
     # Profile visibility
     profile_visible = models.BooleanField(default=True)
 
+    # Profile enhancement fields
+    profile_background = models.ImageField(upload_to='profile_backgrounds/', null=True, blank=True)
+    first_notable_send = models.CharField(max_length=200, blank=True, help_text="Notable first send (e.g., 'The Diamond')")
+    first_send_year = models.IntegerField(null=True, blank=True)
+
+    # Climber attribute ratings (1-10 scale for radar chart)
+    attr_endurance = models.IntegerField(default=5, validators=[MinValueValidator(1), MaxValueValidator(10)])
+    attr_power = models.IntegerField(default=5, validators=[MinValueValidator(1), MaxValueValidator(10)])
+    attr_technique = models.IntegerField(default=5, validators=[MinValueValidator(1), MaxValueValidator(10)])
+    attr_mental = models.IntegerField(default=5, validators=[MinValueValidator(1), MaxValueValidator(10)])
+    attr_flexibility = models.IntegerField(default=5, validators=[MinValueValidator(1), MaxValueValidator(10)])
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -173,6 +185,9 @@ class User(AbstractUser):
 
     class Meta:
         db_table = 'users'
+        indexes = [
+            models.Index(fields=['email_verified', 'profile_visible']),
+        ]
 
     def __str__(self):
         return f"{self.display_name} ({self.email})"
@@ -360,6 +375,10 @@ class Block(models.Model):
     class Meta:
         db_table = 'blocks'
         unique_together = ['blocker', 'blocked']
+        indexes = [
+            models.Index(fields=['blocker']),
+            models.Index(fields=['blocked']),
+        ]
         constraints = [
             models.CheckConstraint(
                 check=~models.Q(blocker=models.F('blocked')),
@@ -409,3 +428,71 @@ class Report(models.Model):
 
     def __str__(self):
         return f"Report by {self.reporter.display_name} about {self.reported.display_name}"
+
+
+class UserMedia(models.Model):
+    """User-uploaded climbing photos/videos"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='media')
+
+    MEDIA_TYPES = [('photo', 'Photo'), ('video', 'Video')]
+    media_type = models.CharField(max_length=10, choices=MEDIA_TYPES)
+
+    file = models.FileField(upload_to='user_media/%Y/%m/')
+    thumbnail = models.ImageField(upload_to='user_media/thumbs/', null=True, blank=True)
+
+    caption = models.CharField(max_length=200, blank=True)
+    location = models.CharField(max_length=200, blank=True)
+    climb_name = models.CharField(max_length=200, blank=True)
+    is_public = models.BooleanField(default=True)
+    display_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'user_media'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.display_name}'s {self.media_type} - {self.caption or 'Untitled'}"
+
+
+class Recommendation(models.Model):
+    """Public testimonial from climbing partner"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recommendations_given')
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recommendations_received')
+
+    body = models.TextField(max_length=500)
+    sessions_together = models.IntegerField(default=0)
+    is_verified = models.BooleanField(default=False)
+
+    STATUS_CHOICES = [('pending', 'Pending'), ('approved', 'Approved'), ('rejected', 'Rejected')]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+
+    is_featured = models.BooleanField(default=False)
+    display_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'recommendations'
+        unique_together = ['author', 'recipient']
+        ordering = ['-is_featured', '-created_at']
+
+    def __str__(self):
+        return f"Recommendation from {self.author.display_name} for {self.recipient.display_name}"
+
+    def compute_sessions_together(self):
+        """Auto-compute sessions climbed together from completed sessions"""
+        from climbing_sessions.models import Session, SessionStatus
+        from django.db.models import Q
+
+        completed_sessions = Session.objects.filter(
+            Q(inviter=self.author, invitee=self.recipient) |
+            Q(inviter=self.recipient, invitee=self.author),
+            status=SessionStatus.COMPLETED
+        ).count()
+
+        self.sessions_together = completed_sessions
+        self.is_verified = completed_sessions > 0
+        return completed_sessions

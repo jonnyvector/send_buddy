@@ -44,6 +44,9 @@ class Session(models.Model):
     class Meta:
         db_table = 'sessions'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status']),
+        ]
         constraints = [
             models.CheckConstraint(
                 check=~models.Q(inviter=models.F('invitee')),

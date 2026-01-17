@@ -22,7 +22,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-dtk+!pxi%m-(i%$2n(@8dwds8_r#egrp*6#ypu$e5%u8sk-iy6')
+# Force environment variable - no default to prevent accidental deployment with insecure key
+SECRET_KEY = config('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
@@ -52,6 +53,11 @@ INSTALLED_APPS = [
     'trips',
     'matching',
     'climbing_sessions',
+    'notifications',
+    'friendships',
+    'overlaps',
+    'groups',
+    'feed',
 ]
 
 MIDDLEWARE = [
@@ -228,6 +234,17 @@ CACHES = {
     }
 }
 
+# Security Headers Configuration
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Strict'
+SESSION_COOKIE_SAMESITE = 'Strict'
+
 # ============================================================================
 # CHANNELS CONFIGURATION (WebSocket Support)
 # ============================================================================
@@ -274,3 +291,35 @@ CHANNEL_LAYERS = {
 # ============================================================================
 
 OPENBETA_API_URL = config('OPENBETA_API_URL', default='https://api.openbeta.io/graphql')
+
+# ============================================================================
+# CELERY CONFIGURATION
+# ============================================================================
+# Celery is used for background tasks and periodic jobs
+#
+# DEVELOPMENT:
+#   - Uses Redis as message broker (default: localhost:6379)
+#   - Run worker: celery -A config worker -l info
+#   - Run beat: celery -A config beat -l info
+#
+# PRODUCTION:
+#   - Configure CELERY_BROKER_URL with Redis/RabbitMQ URL
+#   - Use supervisor or systemd to manage worker and beat processes
+# ============================================================================
+
+# Celery Configuration
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+
+# Celery Beat Schedule (defined in config/celery.py)
+# Includes:
+# - Daily overlap detection at 6 AM
+# - Overlap notifications every 2 hours
+# - Trip status updates at 12:30 AM
+# - Cross-path detection weekly on Monday at 7 AM

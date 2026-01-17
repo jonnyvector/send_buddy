@@ -1,9 +1,11 @@
-from rest_framework import generics, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework import generics, status, viewsets
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
@@ -11,15 +13,18 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.core.mail import mail_admins
+from django.utils import timezone
 from .serializers import (
     RegisterSerializer, UserSerializer, UserUpdateSerializer, PublicUserSerializer,
     ChangePasswordSerializer, DisciplineProfileCreateSerializer,
     ExperienceTagSerializer, ExperienceTagDetailSerializer, BlockSerializer, BlockedUserSerializer,
-    ReportSerializer, CreateReportSerializer
+    ReportSerializer, CreateReportSerializer,
+    UserMediaSerializer, UserMediaCreateSerializer, RecommendationSerializer,
+    RecommendationCreateSerializer, ProfileStatsSerializer
 )
-from .models import User, DisciplineProfile, UserExperienceTag, ExperienceTag, Block, Report
+from .models import User, DisciplineProfile, UserExperienceTag, ExperienceTag, Block, Report, UserMedia, Recommendation
 import re
 
 
@@ -166,8 +171,12 @@ def token_refresh(request):
 
         return response
 
-    except Exception:
+    except (TokenError, InvalidToken):
         return Response({'error': 'Invalid or expired refresh token'}, status=status.HTTP_401_UNAUTHORIZED)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_401_UNAUTHORIZED)
+    except KeyError:
+        return Response({'error': 'Invalid token format'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 @api_view(['POST'])
@@ -321,24 +330,9 @@ class CurrentUserView(generics.RetrieveUpdateAPIView):
 def get_public_profile(request, user_id):
     """Get another user's public profile"""
     try:
-        user = User.objects.get(pk=user_id)
+        # Use visible_to() manager to enforce bilateral blocking and profile visibility
+        user = User.objects.visible_to(request.user).get(pk=user_id)
     except User.DoesNotExist:
-        return Response(
-            {'detail': 'User not found'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-
-    # Check if profile is visible
-    if not user.profile_visible:
-        return Response(
-            {'detail': 'This profile is private'},
-            status=status.HTTP_403_FORBIDDEN
-        )
-
-    # Check if blocked
-    if Block.objects.filter(
-        Q(blocker=request.user, blocked=user) | Q(blocker=user, blocked=request.user)
-    ).exists():
         return Response(
             {'detail': 'User not found'},
             status=status.HTTP_404_NOT_FOUND
@@ -731,7 +725,7 @@ def list_my_reports(request):
 
     queryset = Report.objects.filter(
         reporter=request.user
-    ).select_related('reported').order_by('-created_at')
+    ).select_related('reported', 'reporter').order_by('-created_at')
 
     if status_filter:
         queryset = queryset.filter(status=status_filter)
@@ -744,3 +738,284 @@ def list_my_reports(request):
 
     serializer = ReportSerializer(page, many=True)
     return paginator.get_paginated_response(serializer.data)
+
+
+# ============================================================================
+# PROFILE PAGE UPGRADE VIEWS
+# ============================================================================
+
+class UserMediaViewSet(viewsets.ModelViewSet):
+    """ViewSet for user media (photos/videos)"""
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    pagination_class = PageNumberPagination
+
+    def get_queryset(self):
+        """Get media for specified user or current user"""
+        user_id = self.kwargs.get('user_id')
+
+        if user_id:
+            # Viewing another user's media - only show public
+            try:
+                user = User.objects.visible_to(self.request.user).get(id=user_id)
+                return UserMedia.objects.filter(user=user, is_public=True).order_by('display_order', '-created_at')
+            except User.DoesNotExist:
+                return UserMedia.objects.none()
+        else:
+            # Viewing own media - show all
+            return UserMedia.objects.filter(user=self.request.user).order_by('display_order', '-created_at')
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return UserMediaCreateSerializer
+        return UserMediaSerializer
+
+    def perform_create(self, serializer):
+        """Save media with current user"""
+        serializer.save(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        """Upload new media - only for own profile"""
+        if 'user_id' in kwargs:
+            return Response(
+                {'error': 'Cannot upload media to another user\'s profile'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        """Update media - only owner can update"""
+        instance = self.get_object()
+        if instance.user != request.user:
+            return Response(
+                {'error': 'You can only edit your own media'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete media - only owner can delete"""
+        instance = self.get_object()
+        if instance.user != request.user:
+            return Response(
+                {'error': 'You can only delete your own media'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
+
+
+class RecommendationViewSet(viewsets.ModelViewSet):
+    """ViewSet for recommendations"""
+    permission_classes = [IsAuthenticated]
+    pagination_class = PageNumberPagination
+
+    def get_queryset(self):
+        """Get recommendations for specified user"""
+        user_id = self.kwargs.get('user_id')
+
+        if user_id:
+            try:
+                user = User.objects.visible_to(self.request.user).get(id=user_id)
+                # Show approved recommendations
+                return Recommendation.objects.filter(
+                    recipient=user,
+                    status='approved'
+                ).select_related('author', 'recipient').order_by('-is_featured', '-created_at')
+            except User.DoesNotExist:
+                return Recommendation.objects.none()
+        else:
+            # Viewing own recommendations - show all statuses
+            return Recommendation.objects.filter(
+                recipient=self.request.user
+            ).select_related('author', 'recipient').order_by('-created_at')
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return RecommendationCreateSerializer
+        return RecommendationSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Write a recommendation for a user"""
+        user_id = kwargs.get('user_id')
+        if not user_id:
+            return Response(
+                {'error': 'User ID required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = self.get_serializer(
+            data=request.data,
+            context={'request': request, 'recipient_id': user_id}
+        )
+        serializer.is_valid(raise_exception=True)
+        recommendation = serializer.save()
+
+        return Response(
+            RecommendationSerializer(recommendation).data,
+            status=status.HTTP_201_CREATED
+        )
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """Approve a recommendation (recipient only)"""
+        try:
+            recommendation = Recommendation.objects.get(id=pk)
+        except Recommendation.DoesNotExist:
+            return Response(
+                {'error': 'Recommendation not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if recommendation.recipient != request.user:
+            return Response(
+                {'error': 'Only the recipient can approve recommendations'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if recommendation.status == 'approved':
+            return Response(
+                {'message': 'Already approved'},
+                status=status.HTTP_200_OK
+            )
+
+        recommendation.status = 'approved'
+        recommendation.approved_at = timezone.now()
+        recommendation.save()
+
+        return Response(
+            {'message': 'Recommendation approved'},
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """Reject a recommendation (recipient only)"""
+        try:
+            recommendation = Recommendation.objects.get(id=pk)
+        except Recommendation.DoesNotExist:
+            return Response(
+                {'error': 'Recommendation not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if recommendation.recipient != request.user:
+            return Response(
+                {'error': 'Only the recipient can reject recommendations'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        recommendation.status = 'rejected'
+        recommendation.save()
+
+        return Response(
+            {'message': 'Recommendation rejected'},
+            status=status.HTTP_200_OK
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete recommendation - only author can delete"""
+        instance = self.get_object()
+        if instance.author != request.user:
+            return Response(
+                {'error': 'You can only delete your own recommendations'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_profile_stats(request, user_id):
+    """Get aggregated profile statistics for a user"""
+    try:
+        # Use visible_to() to enforce blocking
+        user = User.objects.visible_to(request.user).get(id=user_id)
+    except User.DoesNotExist:
+        return Response(
+            {'error': 'User not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    # Compute statistics
+    from climbing_sessions.models import Session, SessionStatus
+    from friendships.models import Friendship
+
+    # Completed sessions count
+    completed_sessions = Session.objects.filter(
+        Q(inviter=user) | Q(invitee=user),
+        status=SessionStatus.COMPLETED
+    ).count()
+
+    # Member since year
+    member_since_year = user.created_at.year
+
+    # Connections count (accepted friendships)
+    connections = Friendship.get_friends(user).count()
+
+    # Mutual friends count (if viewing another user)
+    mutual_friends = 0
+    if user != request.user:
+        # Get both users' friends and find intersection
+        viewer_friends = set(Friendship.get_friends(request.user).values_list('id', flat=True))
+        user_friends = set(Friendship.get_friends(user).values_list('id', flat=True))
+        mutual_friends = len(viewer_friends & user_friends)
+
+    # Recommendations count (approved only)
+    recommendations = Recommendation.objects.filter(
+        recipient=user,
+        status='approved'
+    ).count()
+
+    # Media count (public only for others, all for self)
+    if user == request.user:
+        media_count = UserMedia.objects.filter(user=user).count()
+    else:
+        media_count = UserMedia.objects.filter(user=user, is_public=True).count()
+
+    stats = {
+        'completed_sessions_count': completed_sessions,
+        'member_since_year': member_since_year,
+        'connections_count': connections,
+        'mutual_friends_count': mutual_friends,
+        'recommendations_count': recommendations,
+        'media_count': media_count
+    }
+
+    serializer = ProfileStatsSerializer(stats)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_profile_background(request):
+    """Upload profile background image"""
+    if 'profile_background' not in request.FILES:
+        return Response(
+            {'error': 'No background image provided'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    user = request.user
+    background_file = request.FILES['profile_background']
+
+    # Validate file size (10MB max)
+    if background_file.size > 10 * 1024 * 1024:
+        return Response(
+            {'error': 'Background image too large (max 10MB)'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Validate file type
+    allowed_types = ['image/jpeg', 'image/png', 'image/webp']
+    if background_file.content_type not in allowed_types:
+        return Response(
+            {'error': 'Invalid file type (allowed: jpg, png, webp)'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    user.profile_background = background_file
+    user.save(update_fields=['profile_background'])
+
+    return Response({
+        'profile_background': request.build_absolute_uri(user.profile_background.url) if user.profile_background else None
+    })

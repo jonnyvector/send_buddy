@@ -124,12 +124,55 @@ class Trip(models.Model):
     # Status
     is_active = models.BooleanField(default=True)
 
+    # NEW SOCIAL UTILITY FIELDS
+    visibility_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('looking_for_partners', 'Looking for Partners'),
+            ('open_to_friends', 'Open to Friends'),
+            ('full_private', 'Full/Private')
+        ],
+        default='open_to_friends'
+    )
+
+    is_group_trip = models.BooleanField(default=False)
+    organizer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        related_name='organized_trips',
+        on_delete=models.SET_NULL
+    )
+    invited_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name='invited_trips'
+    )
+
+    trip_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('planned', 'Planned'),
+            ('in_progress', 'In Progress'),
+            ('completed', 'Completed'),
+            ('cancelled', 'Cancelled')
+        ],
+        default='planned'
+    )
+
+    notes_public = models.TextField(blank=True)
+    notes_private = models.TextField(blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'trips'
         ordering = ['start_date']
+        indexes = [
+            models.Index(fields=['start_date', 'end_date']),
+            models.Index(fields=['user', 'is_active', 'start_date']),
+        ]
         constraints = [
             models.CheckConstraint(
                 check=models.Q(end_date__gte=models.F('start_date')),
@@ -156,6 +199,24 @@ class Trip(models.Model):
             if self.start_date < today:
                 raise ValidationError({
                     'start_date': 'Cannot create trips in the past'
+                })
+
+        # Check for overlapping trips at the same destination
+        if self.user and self.destination and self.start_date and self.end_date:
+            overlapping = Trip.objects.filter(
+                user=self.user,
+                destination=self.destination,
+                is_active=True,
+                start_date__lte=self.end_date,
+                end_date__gte=self.start_date
+            )
+            # Exclude self when updating
+            if self.pk:
+                overlapping = overlapping.exclude(pk=self.pk)
+
+            if overlapping.exists():
+                raise ValidationError({
+                    'start_date': f'You already have an overlapping trip to {self.destination.name} during these dates'
                 })
 
     def validate_crags_belong_to_destination(self):

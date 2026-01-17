@@ -12,7 +12,7 @@ from .serializers import (
     DestinationSerializer, DestinationListSerializer,
     DestinationAutocompleteSerializer,
     CragSerializer, TripSerializer, TripListSerializer,
-    TripUpdateSerializer, AvailabilityBlockSerializer
+    TripUpdateSerializer, TripPublicSerializer, AvailabilityBlockSerializer
 )
 
 
@@ -77,9 +77,64 @@ class TripViewSet(viewsets.ModelViewSet):
         return TripSerializer
 
     def get_queryset(self):
-        queryset = Trip.objects.filter(user=self.request.user).select_related('destination').prefetch_related('preferred_crags', 'availability')
+        """
+        Get trips visible to the current user with proper visibility filtering.
 
-        # Filters
+        User can see trips where:
+        1. They own the trip (any visibility)
+        2. They are invited to the trip (any visibility)
+        3. Trip is 'looking_for_partners' (public) - from visible users
+        4. Trip is 'open_to_friends' AND user is friend with owner
+        5. Never show 'full_private' trips unless owner or invited
+        """
+        user = self.request.user
+
+        # Import models needed for filtering
+        from users.models import User, Block
+        from friendships.models import Friendship
+
+        # Get blocked user IDs (bilateral blocking)
+        blocked_users = Block.objects.filter(
+            Q(blocker=user) | Q(blocked=user)
+        ).values_list('blocker', 'blocked')
+
+        blocked_ids = set()
+        for blocker_id, blocked_id in blocked_users:
+            if blocker_id == user.id:
+                blocked_ids.add(blocked_id)
+            else:
+                blocked_ids.add(blocker_id)
+
+        # Get friend IDs
+        friends = Friendship.get_friends(user)
+        friend_ids = set(friends.values_list('id', flat=True))
+
+        # Build visibility filter
+        # 1. User's own trips (any visibility)
+        own_trips = Q(user=user)
+
+        # 2. User is invited to the trip
+        invited_trips = Q(invited_users=user)
+
+        # 3. Public trips (looking_for_partners) from non-blocked users
+        public_trips = Q(visibility_status='looking_for_partners') & ~Q(user_id__in=blocked_ids)
+
+        # 4. Friend-only trips from actual friends
+        friend_trips = Q(visibility_status='open_to_friends', user_id__in=friend_ids)
+
+        # Combine all visibility conditions
+        visibility_filter = own_trips | invited_trips | public_trips | friend_trips
+
+        # Base queryset with optimizations
+        queryset = Trip.objects.filter(
+            visibility_filter
+        ).select_related(
+            'destination', 'user', 'organizer'
+        ).prefetch_related(
+            'preferred_crags', 'availability', 'invited_users'
+        ).distinct()
+
+        # Additional filters from query params
         is_active = self.request.query_params.get('is_active')
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
@@ -94,8 +149,32 @@ class TripViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
     @action(detail=False, methods=['get'])
+    def mine(self, request):
+        """Get only the current user's own trips (for My Trips page)"""
+        queryset = Trip.objects.filter(
+            user=request.user
+        ).select_related(
+            'destination', 'user', 'organizer'
+        ).prefetch_related(
+            'preferred_crags', 'availability', 'invited_users'
+        )
+
+        # Apply filters
+        is_active = request.query_params.get('is_active')
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+
+        upcoming = request.query_params.get('upcoming')
+        if upcoming == 'true':
+            queryset = queryset.filter(start_date__gte=date.today())
+
+        queryset = queryset.order_by('start_date')
+        serializer = TripListSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
     def next(self, request):
-        """Get next upcoming trip"""
+        """Get next upcoming trip for the authenticated user"""
         trip = Trip.objects.filter(
             user=request.user,
             start_date__gte=date.today(),
@@ -107,6 +186,178 @@ class TripViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         else:
             return Response({'detail': 'No upcoming trips'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['get'])
+    def upcoming(self, request):
+        """Get user's upcoming trips (end_date >= today)"""
+        trips = Trip.objects.filter(
+            user=request.user,
+            end_date__gte=date.today()
+        ).select_related(
+            'destination', 'user', 'organizer'
+        ).prefetch_related(
+            'preferred_crags', 'availability', 'invited_users'
+        ).order_by('start_date')
+
+        serializer = TripListSerializer(trips, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def past(self, request):
+        """Get user's past trips (end_date < today)"""
+        trips = Trip.objects.filter(
+            user=request.user,
+            end_date__lt=date.today()
+        ).select_related(
+            'destination', 'user', 'organizer'
+        ).prefetch_related(
+            'preferred_crags', 'availability', 'invited_users'
+        ).order_by('-end_date')
+
+        serializer = TripListSerializer(trips, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def public(self, request):
+        """
+        Get public trips looking for partners - for Partner Finder.
+        Excludes trips from blocked users.
+        """
+        from users.models import Block
+
+        # Get blocked user IDs
+        blocked_users = Block.objects.filter(
+            Q(blocker=request.user) | Q(blocked=request.user)
+        ).values_list('blocker', 'blocked')
+
+        blocked_ids = set()
+        for blocker_id, blocked_id in blocked_users:
+            if blocker_id == request.user.id:
+                blocked_ids.add(blocked_id)
+            else:
+                blocked_ids.add(blocker_id)
+
+        # Get public trips from non-blocked users
+        trips = Trip.objects.filter(
+            visibility_status='looking_for_partners',
+            is_active=True
+        ).exclude(
+            user_id__in=blocked_ids
+        ).select_related(
+            'destination', 'user', 'organizer'
+        ).prefetch_related(
+            'preferred_crags'
+        ).order_by('start_date')
+
+        # Optional filters
+        destination_slug = request.query_params.get('destination')
+        if destination_slug:
+            trips = trips.filter(destination__slug=destination_slug)
+
+        start_date_str = request.query_params.get('start_date')
+        if start_date_str:
+            try:
+                start_date_filter = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                trips = trips.filter(start_date__gte=start_date_filter)
+            except ValueError:
+                pass
+
+        end_date_str = request.query_params.get('end_date')
+        if end_date_str:
+            try:
+                end_date_filter = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                trips = trips.filter(end_date__lte=end_date_filter)
+            except ValueError:
+                pass
+
+        serializer = TripPublicSerializer(trips, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def friends_trips(self, request):
+        """
+        Get trips from user's friends that are visible to them.
+        Includes trips with visibility 'looking_for_partners' or 'open_to_friends'.
+        """
+        from friendships.models import Friendship
+
+        # Get friend IDs
+        friends = Friendship.get_friends(request.user)
+        friend_ids = set(friends.values_list('id', flat=True))
+
+        if not friend_ids:
+            return Response([])
+
+        # Get trips from friends that are visible
+        trips = Trip.objects.filter(
+            Q(user_id__in=friend_ids) &
+            (Q(visibility_status='looking_for_partners') | Q(visibility_status='open_to_friends')),
+            is_active=True
+        ).select_related(
+            'destination', 'user', 'organizer'
+        ).prefetch_related(
+            'preferred_crags'
+        ).order_by('start_date')
+
+        serializer = TripPublicSerializer(trips, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def invite_users(self, request, pk=None):
+        """
+        Invite users to a group trip.
+        Only trip owner or organizer can invite users.
+        """
+        trip = self.get_object()
+
+        # Check permission: only owner or organizer can invite
+        if trip.user != request.user and trip.organizer != request.user:
+            return Response(
+                {'error': 'Only the trip owner or organizer can invite users'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Get user IDs to invite
+        user_ids = request.data.get('user_ids', [])
+
+        if not user_ids:
+            return Response(
+                {'error': 'user_ids is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate users exist
+        from users.models import User
+        users_to_invite = User.objects.filter(id__in=user_ids)
+
+        if users_to_invite.count() != len(user_ids):
+            return Response(
+                {'error': 'One or more user IDs are invalid'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Add users to invited_users
+        trip.invited_users.add(*users_to_invite)
+
+        # Send notifications to invited users
+        from notifications.services import NotificationService
+        for invited_user in users_to_invite:
+            NotificationService.create_notification(
+                recipient=invited_user,
+                notification_type='trip_invitation',
+                title=f'{request.user.display_name} invited you to a trip',
+                body=f'{trip.destination.name} from {trip.start_date} to {trip.end_date}',
+                metadata={
+                    'trip_id': str(trip.id),
+                    'destination': trip.destination.name,
+                    'start_date': trip.start_date.isoformat(),
+                    'end_date': trip.end_date.isoformat()
+                }
+            )
+
+        # Return updated trip
+        serializer = TripSerializer(trip)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['post'], url_path='availability')
     def add_availability(self, request, pk=None):

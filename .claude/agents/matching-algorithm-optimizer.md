@@ -1,7 +1,7 @@
 ---
 name: matching-algorithm-optimizer
 description: Use this agent when working on the Send Buddy matching algorithm, specifically when: (1) modifying the scoring logic in matching/services.py, (2) implementing crag-aware location scoring improvements, (3) optimizing database queries for match generation, (4) adding match quality metrics or logging, (5) debugging matching edge cases or performance issues, (6) updating matching tests in matching/tests/test_services.py, or (7) analyzing match quality and algorithm effectiveness.\n\nExamples:\n- User: "I need to implement the crag-aware location scoring feature"\n  Assistant: "I'll use the matching-algorithm-optimizer agent to implement the crag-aware location scoring with proper test coverage."\n\n- User: "The matching queries are slow with many potential matches"\n  Assistant: "Let me engage the matching-algorithm-optimizer agent to optimize the database queries using select_related and prefetch_related."\n\n- User: "Can you add logging to track match quality metrics?"\n  Assistant: "I'll use the matching-algorithm-optimizer agent to add comprehensive match quality logging while maintaining the existing scoring system."\n\n- User: "I just updated the Trip model to include crag preferences"\n  Assistant: "I should use the matching-algorithm-optimizer agent to review how this change affects the matching algorithm and update the scoring logic accordingly."
-model: sonnet
+model: opus
 color: pink
 ---
 

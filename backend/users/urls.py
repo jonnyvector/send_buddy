@@ -1,7 +1,15 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views, admin_views
 
 app_name = 'users'
+
+# Create router for ViewSets
+router = DefaultRouter()
+router.register(r'users/me/media', views.UserMediaViewSet, basename='user-media-own')
+router.register(r'users/(?P<user_id>[^/.]+)/media', views.UserMediaViewSet, basename='user-media')
+router.register(r'users/me/recommendations', views.RecommendationViewSet, basename='user-recommendations-own')
+router.register(r'users/(?P<user_id>[^/.]+)/recommendations', views.RecommendationViewSet, basename='user-recommendations')
 
 urlpatterns = [
     # Authentication
@@ -44,4 +52,11 @@ urlpatterns = [
     path('admin/reports/', admin_views.list_reports, name='admin_list_reports'),
     path('admin/reports/<uuid:report_id>/', admin_views.update_report, name='admin_update_report'),
     path('admin/users/<uuid:user_id>/disable/', admin_views.disable_user, name='admin_disable_user'),
+
+    # Profile Page Upgrade
+    path('users/<uuid:user_id>/profile-stats/', views.get_profile_stats, name='profile_stats'),
+    path('users/me/profile-background/', views.upload_profile_background, name='upload_profile_background'),
 ]
+
+# Include router URLs
+urlpatterns += router.urls

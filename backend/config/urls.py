@@ -41,6 +41,18 @@ urlpatterns = [
 
     # Session and messaging endpoints
     path('api/', include('climbing_sessions.urls')),
+
+    # Notification endpoints
+    path('api/', include('notifications.urls')),
+
+    # Friendship endpoints
+    path('api/', include('friendships.urls')),
+
+    # Feed endpoints
+    path('api/feed/', include('feed.urls')),
+
+    # Overlap endpoints
+    path('api/', include('overlaps.urls')),
 ]
 
 # Serve media files in development

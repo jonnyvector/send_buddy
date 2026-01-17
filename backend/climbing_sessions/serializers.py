@@ -73,21 +73,15 @@ class CreateSessionSerializer(serializers.Serializer):
     def validate(self, data):
         user = self.context['request'].user
 
-        # Check if invitee exists
+        # Check if invitee exists and is visible to current user (enforces bilateral blocking)
         try:
-            invitee = User.objects.get(id=data['invitee_id'])
+            invitee = User.objects.visible_to(user).get(id=data['invitee_id'])
         except User.DoesNotExist:
-            raise serializers.ValidationError({"invitee_id": "Invitee not found"})
+            raise serializers.ValidationError({"invitee_id": "Cannot send invitation to this user"})
 
         # Prevent self-invites
         if invitee == user:
             raise serializers.ValidationError("Cannot invite yourself")
-
-        # Check if blocked (Phase 6: Trust & Safety)
-        if Block.objects.filter(
-            Q(blocker=user, blocked=invitee) | Q(blocker=invitee, blocked=user)
-        ).exists():
-            raise serializers.ValidationError("Cannot send invitation to this user")
 
         # Check trip ownership and date range
         try:

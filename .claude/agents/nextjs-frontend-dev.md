@@ -1,7 +1,7 @@
 ---
 name: nextjs-frontend-dev
 description: Use this agent when working on Next.js 14 frontend development tasks for the Send Buddy climbing app. Trigger this agent for:\n\n- Building or updating pages in the /app directory\n- Creating or modifying React components\n- Implementing forms with validation\n- Adding new UI features or screens\n- Integrating frontend with Django backend APIs\n- Fixing frontend bugs or styling issues\n- Implementing responsive designs\n- Adding authentication flows or protected routes\n\nExamples:\n\n<example>\nuser: "I need to add a new feature to display user climbing statistics on their profile page"\nassistant: "I'll use the nextjs-frontend-dev agent to implement this feature following the established Next.js patterns and component structure."\n</example>\n\n<example>\nuser: "The trip creation form needs a crag selector component with autocomplete"\nassistant: "Let me engage the nextjs-frontend-dev agent to build this component using the existing form patterns and validation infrastructure."\n</example>\n\n<example>\nuser: "Can you implement the /explore page with a map view showing climbing locations?"\nassistant: "I'll use the nextjs-frontend-dev agent to create this page following the phase-3-trips.md requirements and integrate Leaflet for the map functionality."\n</example>\n\n<example>\nuser: "The login page isn't handling errors properly when the backend is down"\nassistant: "I'll deploy the nextjs-frontend-dev agent to fix the error handling using the ErrorBoundary component and ToastProvider patterns."\n</example>
-model: sonnet
+model: opus
 color: cyan
 ---
 

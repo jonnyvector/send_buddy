@@ -2,7 +2,7 @@
 name: ui-ux-reviewer
 description: Reviews UI/UX from screenshots and provides design feedback for web applications
 tools: mcp__playwright__*, Read, Write, Bash
-model: sonnet
+model: opus
 ---
 
 You are an expert UI/UX design reviewer. When invoked, you will:

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
-from .models import User, DisciplineProfile, ExperienceTag, Block, Report
+from .models import User, DisciplineProfile, ExperienceTag, Block, Report, UserMedia, Recommendation
 import re
 
 
@@ -81,13 +81,26 @@ class UserSerializer(serializers.ModelSerializer):
             'profile_visible', 'email_verified',
             'gender', 'preferred_partner_gender',
             'weight_kg', 'preferred_weight_difference',
-            'disciplines', 'experience_tags', 'created_at'
+            'disciplines', 'experience_tags', 'created_at',
+            # New profile enhancement fields
+            'profile_background', 'first_notable_send', 'first_send_year',
+            'attr_endurance', 'attr_power', 'attr_technique',
+            'attr_mental', 'attr_flexibility'
         ]
         read_only_fields = ['id', 'email', 'email_verified', 'created_at']
 
     def get_experience_tags(self, obj):
         # Return list of tag slugs (not string representation)
         return [tag.tag.slug for tag in obj.experience_tags.all()]
+
+
+class UserMinimalSerializer(serializers.ModelSerializer):
+    """Minimal user info for trips, invitations, etc."""
+
+    class Meta:
+        model = User
+        fields = ['id', 'display_name', 'avatar']
+        read_only_fields = fields
 
 
 class PublicUserSerializer(serializers.ModelSerializer):
@@ -102,7 +115,11 @@ class PublicUserSerializer(serializers.ModelSerializer):
             'home_location',
             'risk_tolerance', 'preferred_grade_system',
             'gender',
-            'disciplines', 'experience_tags', 'created_at'
+            'disciplines', 'experience_tags', 'created_at',
+            # New profile enhancement fields
+            'profile_background', 'first_notable_send', 'first_send_year',
+            'attr_endurance', 'attr_power', 'attr_technique',
+            'attr_mental', 'attr_flexibility'
         ]
         read_only_fields = fields
 
@@ -120,12 +137,24 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'display_name', 'bio', 'home_location', 'home_lat', 'home_lng',
             'risk_tolerance', 'preferred_grade_system', 'profile_visible',
             'gender', 'preferred_partner_gender',
-            'weight_kg', 'preferred_weight_difference'
+            'weight_kg', 'preferred_weight_difference',
+            # New profile enhancement fields
+            'first_notable_send', 'first_send_year',
+            'attr_endurance', 'attr_power', 'attr_technique',
+            'attr_mental', 'attr_flexibility'
         ]
 
     def validate_weight_kg(self, value):
         if value is not None and (value < 30 or value > 200):
             raise serializers.ValidationError("Weight must be between 30 and 200 kg")
+        return value
+
+    def validate_first_send_year(self, value):
+        if value is not None:
+            import datetime
+            current_year = datetime.datetime.now().year
+            if value < 1950 or value > current_year:
+                raise serializers.ValidationError(f"Year must be between 1950 and {current_year}")
         return value
 
 
@@ -283,3 +312,154 @@ class UpdateReportSerializer(serializers.ModelSerializer):
                 f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
             )
         return value
+
+
+# Profile Page Upgrade Serializers
+
+class UserMediaSerializer(serializers.ModelSerializer):
+    """Serializer for user media (photos/videos)"""
+    user = UserMinimalSerializer(read_only=True)
+    file_url = serializers.SerializerMethodField()
+    thumbnail_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserMedia
+        fields = [
+            'id', 'user', 'media_type', 'file', 'file_url', 'thumbnail',
+            'thumbnail_url', 'caption', 'location', 'climb_name',
+            'is_public', 'display_order', 'created_at'
+        ]
+        read_only_fields = ['id', 'user', 'file_url', 'thumbnail_url', 'created_at']
+
+    def get_file_url(self, obj):
+        if obj.file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.file.url)
+            return obj.file.url
+        return None
+
+    def get_thumbnail_url(self, obj):
+        if obj.thumbnail:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.thumbnail.url)
+            return obj.thumbnail.url
+        return None
+
+
+class UserMediaCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating user media"""
+
+    class Meta:
+        model = UserMedia
+        fields = [
+            'media_type', 'file', 'caption', 'location', 'climb_name',
+            'is_public', 'display_order'
+        ]
+
+    def validate_file(self, value):
+        """Validate file size and type"""
+        # 50MB max for videos, 10MB max for photos
+        max_size = 50 * 1024 * 1024 if 'video' in value.content_type else 10 * 1024 * 1024
+        if value.size > max_size:
+            raise serializers.ValidationError(f'File too large. Max size: {max_size // (1024*1024)}MB')
+
+        # Validate content type
+        allowed_photo_types = ['image/jpeg', 'image/png', 'image/webp', 'image/heic']
+        allowed_video_types = ['video/mp4', 'video/quicktime', 'video/webm']
+
+        if self.initial_data.get('media_type') == 'photo':
+            if value.content_type not in allowed_photo_types:
+                raise serializers.ValidationError('Invalid photo format. Allowed: JPEG, PNG, WebP, HEIC')
+        elif self.initial_data.get('media_type') == 'video':
+            if value.content_type not in allowed_video_types:
+                raise serializers.ValidationError('Invalid video format. Allowed: MP4, MOV, WebM')
+
+        return value
+
+
+class RecommendationSerializer(serializers.ModelSerializer):
+    """Serializer for recommendations (read)"""
+    author = UserMinimalSerializer(read_only=True)
+    recipient = UserMinimalSerializer(read_only=True)
+
+    class Meta:
+        model = Recommendation
+        fields = [
+            'id', 'author', 'recipient', 'body', 'sessions_together',
+            'is_verified', 'status', 'is_featured', 'display_order',
+            'created_at', 'approved_at'
+        ]
+        read_only_fields = fields
+
+
+class RecommendationCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating recommendations"""
+
+    class Meta:
+        model = Recommendation
+        fields = ['body']
+
+    def validate_body(self, value):
+        """Ensure recommendation is meaningful"""
+        if len(value) < 20:
+            raise serializers.ValidationError('Recommendation must be at least 20 characters')
+        return value
+
+    def validate(self, data):
+        """Additional validation"""
+        request = self.context['request']
+        recipient_id = self.context.get('recipient_id')
+
+        if not recipient_id:
+            raise serializers.ValidationError('Recipient ID required')
+
+        try:
+            recipient = User.objects.get(id=recipient_id)
+        except User.DoesNotExist:
+            raise serializers.ValidationError('Recipient not found')
+
+        # Can't recommend yourself
+        if request.user == recipient:
+            raise serializers.ValidationError('Cannot write a recommendation for yourself')
+
+        # Check for existing recommendation
+        if Recommendation.objects.filter(author=request.user, recipient=recipient).exists():
+            raise serializers.ValidationError('You have already written a recommendation for this user')
+
+        # Check if they've climbed together (warning, not error)
+        from climbing_sessions.models import Session, SessionStatus
+        from django.db.models import Q
+
+        sessions_count = Session.objects.filter(
+            Q(inviter=request.user, invitee=recipient) |
+            Q(inviter=recipient, invitee=request.user),
+            status=SessionStatus.COMPLETED
+        ).count()
+
+        data['recipient'] = recipient
+        data['sessions_count'] = sessions_count
+
+        return data
+
+    def create(self, validated_data):
+        """Create recommendation with auto-computed sessions"""
+        sessions_count = validated_data.pop('sessions_count', 0)
+        recommendation = Recommendation.objects.create(
+            author=self.context['request'].user,
+            **validated_data
+        )
+        recommendation.compute_sessions_together()
+        recommendation.save()
+        return recommendation
+
+
+class ProfileStatsSerializer(serializers.Serializer):
+    """Serializer for aggregated profile statistics"""
+    completed_sessions_count = serializers.IntegerField()
+    member_since_year = serializers.IntegerField()
+    connections_count = serializers.IntegerField()
+    mutual_friends_count = serializers.IntegerField()
+    recommendations_count = serializers.IntegerField()
+    media_count = serializers.IntegerField()

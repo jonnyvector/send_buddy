@@ -1,7 +1,7 @@
 ---
 name: django-api-developer
 description: Use this agent when implementing Django REST Framework features for the Send Buddy climbing matchmaking app. Examples:\n\n<example>\nContext: User needs to implement a new API endpoint for trip creation.\nuser: "I need to add an endpoint for users to create climbing trips with location and date"\nassistant: "I'll use the django-api-developer agent to implement this endpoint following the project's patterns and phase specifications."\n<Task tool invocation to django-api-developer agent>\n</example>\n\n<example>\nContext: User has just written a new serializer and wants it reviewed.\nuser: "I've created a MatchSerializer for the matching app. Can you review it?"\nassistant: "Let me use the django-api-developer agent to review your serializer against the project's standards and DRF best practices."\n<Task tool invocation to django-api-developer agent>\n</example>\n\n<example>\nContext: User mentions adding user profile features.\nuser: "We need to add climbing grade preferences to user profiles"\nassistant: "I'll use the django-api-developer agent to implement this feature, ensuring it follows the existing User model patterns and includes proper blocking logic."\n<Task tool invocation to django-api-developer agent>\n</example>\n\n<example>\nContext: Proactive use after user describes a feature need.\nuser: "Users should be able to see other climbers' upcoming trips"\nassistant: "This requires implementing a new API endpoint. I'll use the django-api-developer agent to create the view, serializer, and tests following the Send Buddy project structure."\n<Task tool invocation to django-api-developer agent>\n</example>
-model: sonnet
+model: opus
 color: green
 ---
 
